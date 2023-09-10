@@ -1,0 +1,136 @@
+#include <stdio.h>
+ #include <cv.h>
+ #include <cxcore.h>
+ #include <highgui.h>
+ #include <math.h>
+
+void rotation(IplImage *rotimg, double Angle, double Scale);
+
+int main()
+ {
+  int i, j, x, y, key;
+  double minVal;
+  char windowNameSource[] = "Original Image";
+  char windowNameDestination[] = "Result Image";
+  char windowNameCoefficientOfCorrelation[] = "Coefficient of Correlation Image";
+   
+  CvPoint minLoc;
+  CvPoint tempLoc;
+  
+  IplImage *sourceImage = cvLoadImage("C:\\Users\\ahs\\Documents\\Visual Studio 2010\\Projects\\number0606\\template_source.jpg", CV_LOAD_IMAGE_ANYDEPTH | CV_LOAD_IMAGE_ANYCOLOR);
+  IplImage *templateImage = cvLoadImage("C:\\Users\\ahs\\Documents\\Visual Studio 2010\\Projects\\number0606\\tem3.jpg", CV_LOAD_IMAGE_ANYDEPTH | CV_LOAD_IMAGE_ANYCOLOR);
+
+ if (sourceImage == NULL) 
+  {
+   printf( "소스 영상이 발견되지 않습니다\n");
+   return -1;
+  }
+  if(templateImage == NULL)
+  {
+   printf( "템플릿 영상이 발견되지 않습니다\n");
+   return -1;
+  }
+  
+  IplImage *graySourceImage = cvCreateImage(cvGetSize(sourceImage), IPL_DEPTH_8U, 1); 
+  IplImage *grayTemplateImage = cvCreateImage(cvGetSize(templateImage), IPL_DEPTH_8U, 1);
+  IplImage *binarySourceImage = cvCreateImage(cvGetSize(sourceImage), IPL_DEPTH_8U, 1); 
+  IplImage *binaryTemplateImage = cvCreateImage(cvGetSize(templateImage), IPL_DEPTH_8U, 1); 
+  IplImage *destinationImage = cvCreateImage(cvGetSize(sourceImage), IPL_DEPTH_8U, 3); 
+
+ cvCopy(sourceImage, destinationImage);
+  cvCvtColor(sourceImage, graySourceImage, CV_RGB2GRAY);
+  cvCvtColor(templateImage, grayTemplateImage, CV_RGB2GRAY);
+
+ cvThreshold(graySourceImage, binarySourceImage, 70, 255, CV_THRESH_BINARY);
+  cvThreshold(grayTemplateImage, binaryTemplateImage, 70, 255, CV_THRESH_BINARY);
+  
+  int templateHeight = templateImage->height;
+  int templateWidth = templateImage->width;
+
+ float templateScale = 0.5f;
+  // 템플릿 매칭 수행부분
+ for(i = 2; i <= 3; i++)  // 스케일(100%부터 150%까지 50%간격으로 축소 및 확대) ,i 및 templateScale 값 수정하여 조정 가능
+ {
+   int tempTemplateHeight = (int)(templateWidth * (i * templateScale));
+   int tempTemplateWidth = (int)(templateHeight * (i * templateScale));
+   IplImage *tempBinaryTemplateImage = cvCreateImage(cvSize(tempTemplateWidth, tempTemplateHeight), IPL_DEPTH_8U, 1);
+   // W - w + 1, H - h + 1
+   IplImage *result = cvCreateImage(cvSize(sourceImage->width - tempTemplateWidth + 1, sourceImage->height - tempTemplateHeight + 1), IPL_DEPTH_32F, 1);
+   cvResize(binaryTemplateImage, tempBinaryTemplateImage, CV_INTER_LINEAR);
+   
+   float degree = 20.0f;
+   for(j = 0; j <= 9; j++) // 회전(0도부터 180도까지 20도 간격으로 회전) => j * 20 = degree ,j 및 degree 값 수정하여 조정 가능
+  {
+    IplImage *rotateBinaryTemplateImage = cvCreateImage(cvSize(tempBinaryTemplateImage->width, tempBinaryTemplateImage->height), IPL_DEPTH_8U, 1);
+    //cvShowImage(windowNameSource, tempBinaryTemplateImage);  // 템플릿 확인용
+   //cvWaitKey(0);             // 템플릿 확인용
+   //회전
+   
+    // 회전, 스케일링 적용할 템플릿 변수 255로 초기화
+   for(y = 0; y < tempTemplateHeight; y++)
+    {
+     for(x = 0; x < tempTemplateWidth; x++)
+     {
+      rotateBinaryTemplateImage->imageData[y * tempTemplateWidth + x] = 255;
+     }
+    }
+    
+    // 템플릿 회전
+   for(y = 0; y < tempTemplateHeight; y++)
+    {
+     for(x = 0; x < tempTemplateWidth; x++)
+     {
+      float radian = (float)j * degree * CV_PI / 180.0f;
+      int scale = y * tempTemplateWidth + x;
+      int rotateY = - sin(radian) * ((float)x - (float)tempTemplateWidth / 2.0f) + cos(radian) * ((float)y - (float)tempTemplateHeight / 2.0f) + tempTemplateHeight / 2;
+      int rotateX = cos(radian) * ((float)x - (float)tempTemplateWidth / 2.0f) + sin(radian) * ((float)y - (float)tempTemplateHeight / 2.0f) + tempTemplateWidth / 2;
+
+     if(rotateY < tempTemplateHeight && rotateX < tempTemplateWidth && rotateY >= 0 && rotateX  >= 0)
+       rotateBinaryTemplateImage->imageData[scale] = tempBinaryTemplateImage->imageData[rotateY * tempTemplateWidth + rotateX];
+     }
+    }
+    // 회전확인용 
+   //cvShowImage(windowNameSource, rotateBinaryTemplateImage);
+    //cvWaitKey(0);
+
+   cvMatchTemplate(binarySourceImage, rotateBinaryTemplateImage, result, CV_TM_SQDIFF_NORMED); // 정규화 O (0~1 사이 값으로 산출)
+    //cvMatchTemplate(binarySourceImage, rotateBinaryTemplateImage, result, CV_TM_SQDIFF);  // 정규화 X (템플릿 크기에 따라 다른 값 산출)
+    cvMinMaxLoc(result, &minVal, NULL, &minLoc, NULL, NULL);
+    printf("템플릿 스케일 %d%%,  최대 유사도 : %f%%\n", (int)(i * 0.5 * 100), (1 - minVal) * 100);    // 최대 유사도값 로그 출력
+   if(minVal < 0.065) // 1 - 0.065 = 0.935 : 93.5% 이상 유사한 경우 탐지하였다고 가정
+   {
+     tempLoc.x = minLoc.x + tempTemplateWidth;
+     tempLoc.y = minLoc.y + tempTemplateHeight;
+     cvRectangle(destinationImage, minLoc, tempLoc, CV_RGB(255, 0, 0), 1, 8, 0);
+    }
+   }
+   //cvShowImage(windowNameSource, result);
+   //cvWaitKey(0);
+   cvReleaseImage(&tempBinaryTemplateImage);
+   cvReleaseImage(&result);
+  }
+  // 템플릿 매칭 수행부분 끝
+
+ cvShowImage(windowNameSource, sourceImage);
+ // cvShowImage(windowNameCoefficientOfCorrelation, result); // Coefficient of Correlation 출력
+ cvShowImage(windowNameDestination, destinationImage);
+  key = cvWaitKey(0);
+  
+  // 메모리를 해방한다
+ cvReleaseImage(&sourceImage);
+  cvReleaseImage(&templateImage);
+  cvReleaseImage(&graySourceImage);
+  cvReleaseImage(&grayTemplateImage);
+  cvReleaseImage(&binarySourceImage);
+  cvReleaseImage(&binaryTemplateImage);
+  cvReleaseImage(&destinationImage);
+
+ // 윈도우를 파기한다
+ cvDestroyWindow(windowNameSource);
+  cvDestroyWindow(windowNameDestination);
+  cvDestroyWindow(windowNameCoefficientOfCorrelation);
+
+ return 0;
+ }
+
+
