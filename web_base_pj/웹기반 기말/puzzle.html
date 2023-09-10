@@ -1,0 +1,249 @@
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no,"/> 
+<title>Slide Puzzle Game</title>
+
+<script type="text/JavaScript">
+window.addEventListener('load', function(){ setTimeout(scrollTo, 0, 0, 1);},false); 
+var wnd,Shuffled=false;
+
+var count=0;
+
+var now=new Date();
+var nt=Number(now.getTime());
+var seconds=Math.floor(0.5+(nt-starttime)/1000);
+
+
+
+function ssplit(dc,istr)
+{
+  slist = new Array();
+  
+  inx=0;
+  pix=0;
+  tstr=istr;
+  ac=0;
+
+  while(1)
+  {
+     inx=tstr.indexOf(dc,1);
+     if(inx == -1)
+       {
+          if(tstr.length>0)
+            {
+              slist[ac]=tstr;
+            } 
+          break;
+       }
+     slist[ac++]=tstr.substring(0,inx);
+     tstr=tstr.substr(inx+1);
+  }
+  return slist;
+}
+
+function GetX(num)
+{
+  var rest=num-Math.floor(num/4)*4; 
+  return (rest==0)?4:rest;
+}
+
+function GetY(num)
+ {
+    return Math.floor((num-1)/4)+1;
+ }
+
+function GetIndex(x,y)
+ {
+   return x+(y-1)*4;
+ }
+
+function IsComplete()
+{
+  var i=16, t=1;
+  while (i>0)
+  {
+    str=document.images["i"+i].src;
+    if(i>9)
+       str=str.substring(str.length-6, str.length-4);
+    else
+       str=str.substring(str.length-5, str.length-4);
+    t=t&&(i==Math.round(str));
+    i--; 
+  }
+  return t&&Shuffled;
+}
+
+function NewDir(p)
+{
+  var dir;
+
+  if ((p==2)||(p==3)) dir=(Math.floor(Math.random()+0.5)==0)?-1:1;
+  else dir=(p==1)?1:-1;
+  return (p+dir);
+}
+
+function NewMove (num)
+{
+  var x,y;
+
+  x=GetX(num);
+  y=GetY(num);
+  if (Math.floor(Math.random()+0.5)==0) x=NewDir(x);
+     else y=NewDir(y);
+  return GetIndex(x,y);
+}
+
+function Shuffle()
+ {
+  var A=new Array(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16);
+  var iter,i,str,num,numnew,numold;
+
+  starttime=new Date();
+  starttime=Number(starttime.getTime());
+
+  count=0;
+  iter=Math.floor(Math.random()*200+0.5)+100;
+  numold=16;
+
+  for (i=1;i<iter;i++)
+  {
+    numnew=NewMove(numold);
+    A[numold-1]=A[numnew-1];
+    A[numnew-1]=16;
+    numold=numnew;
+  }
+
+  for (i=1;i<17;i++)
+  {
+    num=A[i-1];
+    str="";
+    document.images["i"+i].src=str+num+".gif";
+  }
+  Shuffled=true;
+}
+
+function ActiveImage(num)
+{
+ var x,y,i,j,flag,str,str0,num1,num0;
+
+  str0=document.images["i"+num].src;
+  ss=new ssplit("/",str0);
+  str0=ss[ss.length-1];
+  if (str0=="16.gif") return;
+
+  x=GetX(num);
+  y=GetY(num);
+  flag=0;
+  num0=0;
+
+  for (i=-1;i<2;i++)
+  for (j=-1;j<2;j++)
+  {
+    num1=GetIndex(i+x,j+y);
+    if (num1!=num)
+      if (((x+i)>0)&&((x+i)<5)&&((y+j)>0)&&((y+j)<5))
+        if (Math.abs(i*j)!=1)
+        {
+          str=document.images["i"+num1].src;
+          ss=new ssplit("/",str);
+          str=ss[ss.length-1];
+          if (str=="16.gif") {flag=1;num0=num1;}
+        }
+  }
+  if (flag==1)
+   {
+
+                var chcount=1+Number(document.f.count.value);
+	        document.f.count.value=String(chcount);
+
+    
+
+    document.images["i"+num0].src=str0;
+    document.images["i"+num].src="16.gif";
+      count=count+1;	
+      var audio = new Audio('sound1.wav');
+			audio.play();
+  
+ }
+  if (IsComplete())
+  {
+    var audio = new Audio('sound3.wav');
+    audio.play();
+    score=10*20-2*count;
+    alert("축하합니다! 당신의 점수는"+score+"입니다!");
+    Shuffled=false;
+  }
+}
+
+</script>
+</head>
+
+<body bgcolor="#FAF4C0" text="green" link="#0000EE" vlink="#551A8B" alink="red">
+
+<h2 align="center">재미있는 퍼즐 게임</h2>
+<div align="center"><table border>
+
+    <tr>
+        <td width="50%" align="center">
+<script language="JavaScript">
+
+with(window.document)
+  {
+    open();
+    writeln('<table border=1 cellpadding=0 cellspacing=1>');
+    for(var i=1;i<17;i++)
+       {
+         if(i==1 || i==5 || i==9 || i==13 )
+           {
+             writeln('<tr>');
+           }
+
+         writeln('  <td width=49 height=49>');
+         writeln('      <a href=JavaScript:void(0); onclick=ActiveImage(',i,');>');
+         writeln('       <img src=',i,'.gif border=0 width=49 height=49 name=i',i,'></a>');
+         writeln('  </td>');
+         if(i==4 || i==8 || i==12 || i==16 )
+           {
+              writeln('</tr>');
+           }
+        }
+      writeln('</table>');
+      close();
+    }
+           
+           </script>
+        </td>
+    </tr>
+<IMG src="origin.png" width="120" height="120" alt="퍼즐원본"> 
+</table></div>
+
+
+
+<center>
+<B>게임설명</B><BR>
+<FONT SIZE=3>1. 시작버튼을 누르고 원본그림을 따라서 퍼즐을 완성해보아요!</FONT><BR>
+<FONT SIZE=3>2. 퍼즐은 클릭을 통해 빈공간으로 움직입니다!</FONT><BR>
+<FONT SIZE=3>3. 게임을 끝까지 클리어하면 당신의 점수가 공개됩니다!</FONT><BR>
+<FONT SIZE=3>4. 종료버튼을 누르면 게임이 종료됩니다!</FONT><BR>
+</center>
+
+
+<p align="center"><br></p>
+
+<p align="center"><input type="button" value="시작" onclick="Shuffle()"></p>
+
+
+<form name="f">
+
+<p align="center">선택 횟수: <input type="text" name="count" value="0"+String(count) size="1"/>
+<p>
+
+<p align="center"><input type="button" onclick="javascript:self.close()" value="종료">
+</p>
+
+</form>
+
+
+</body>
+
+</html>
